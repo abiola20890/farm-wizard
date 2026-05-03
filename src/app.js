@@ -61,15 +61,9 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // ── Logging ─────────────────────────────────────────────────
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  const logStream = fs.createWriteStream(
-    path.join(process.cwd(), 'logs', 'access.log'),
-    { flags: 'a' }
-  );
-  app.use(morgan('combined', { stream: logStream }));
-}
+app.use(
+  morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')
+);
 
 // ── Health Check ────────────────────────────────────────────
 app.get('/health', (req, res) => {
