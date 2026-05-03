@@ -20,12 +20,25 @@ app.use(helmet());
 app.use(mongoSanitize());
 
 // ── CORS ────────────────────────────────────────────────────
+// CORS configuration
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',') // allow multiple origins
+  : ['*']; // fallback for development
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://farm-wizard-frontend.onrender.com']
-    : '*',
+  origin: function (origin, callback) {
+    // allow requests with no origin (like Postman, mobile apps)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
 // ── Rate Limiting ───────────────────────────────────────────
