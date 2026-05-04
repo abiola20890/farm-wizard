@@ -1,4 +1,4 @@
-// src/models/user.model.js
+
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
+    index: true,
   },
   password: {
     type: String,
@@ -25,26 +26,32 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false,
   },
-  coins: {
-    type: Number,
-    default: 100, // Starting coins for new farmers
+
+  // ── RBAC  ──────────────────────────────────────────────
+  role: {
+    type: String,
+    enum: ['farmer', 'moderator', 'admin'],
+    default: 'farmer',
+    index: true,
   },
-  level: {
-    type: Number,
-    default: 1,
-  },
-  experience: {
-    type: Number,
-    default: 0,
-  },
-  totalHarvests: {
-    type: Number,
-    default: 0,
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
+
+  // ── Game State ─────────────────────────────────────────────────────────
+  coins: { type: Number, default: 100 },
+  level: { type: Number, default: 1 },
+  experience: { type: Number, default: 0 },
+  totalHarvests: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true },
+
+  // ── Password Reset  ──────────────────────────────────
+  passwordResetToken: { type: String, select: false },
+  passwordResetExpires: { type: Date, select: false },
+
+  // ── MFA — Admin OTP  ─────────────────────────────────
+  mfaEnabled: { type: Boolean, default: false },
+  mfaOTP: { type: String, select: false },
+  mfaOTPExpires: { type: Date, select: false },
+  mfaVerified: { type: Boolean, default: false }, // true after OTP confirmed
+
 }, { timestamps: true });
 
 // Hash password before saving
@@ -54,7 +61,7 @@ userSchema.pre('save', async function () {
   this.password = await bcrypt.hash(this.password, rounds);
 });
 
-// Compare password method
+// Compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
@@ -63,10 +70,13 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.passwordResetToken;
+  delete obj.passwordResetExpires;
+  delete obj.mfaOTP;
+  delete obj.mfaOTPExpires;
   delete obj.__v;
   return obj;
 };
 
 const User = mongoose.model('User', userSchema);
 export default User;
-
